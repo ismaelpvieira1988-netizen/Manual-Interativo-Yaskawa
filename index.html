@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Diagnóstico V1000 · Yaskawa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0d1012;
+    --bg-1:#15191c;
+    --panel:#1b2124;
+    --panel-2:#20272b;
+    --line:#2c3438;
+    --led-amber:#ffb020;
+    --led-amber-dim:#5a4318;
+    --text-hi:#eef2f3;
+    --text-mid:#9fb0b6;
+    --text-low:#5f7278;
+    --fault:#ff5a5a;
+    --alarm:#ffb020;
+    --ope:#59c7ff;
+    --auto:#8fd694;
+    --mono: 'IBM Plex Mono', monospace;
+    --disp: 'Share Tech Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #1a2124 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, #171b1d 0%, transparent 55%),
+      var(--bg-0);
+    color:var(--text-hi);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:32px 16px 80px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+
+  /* ===== Header / plate ===== */
+  header{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    margin-bottom:22px;flex-wrap:wrap;gap:12px;
+  }
+  .brandmark{
+    display:flex;align-items:center;gap:12px;
+  }
+  .brandmark .chip{
+    width:38px;height:38px;border-radius:8px;
+    background:linear-gradient(160deg,#242b2e,#171c1e);
+    border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 14px rgba(0,0,0,0.35);
+  }
+  .brandmark .chip svg{width:20px;height:20px;}
+  .brandmark h1{
+    font-size:17px;letter-spacing:0.02em;margin:0;font-weight:600;color:var(--text-hi);
+  }
+  .brandmark .sub{font-family:var(--mono);font-size:11px;color:var(--text-low);letter-spacing:0.06em;text-transform:uppercase;}
+  .rating-plate{
+    font-family:var(--mono);font-size:10.5px;color:var(--text-low);
+    text-align:right;line-height:1.6;letter-spacing:0.02em;
+  }
+  .rating-plate b{color:var(--text-mid);font-weight:500;}
+
+  /* ===== Operator panel (signature element) ===== */
+  .operator{
+    background:linear-gradient(180deg,#1e2528,#171d1f);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px 20px 16px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.03),
+      0 20px 40px -20px rgba(0,0,0,0.6);
+    position:relative;
+    overflow:hidden;
+  }
+  .operator::before{
+    content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 3px);
+    pointer-events:none;
+  }
+  .operator-top{
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:var(--mono);font-size:10px;color:var(--text-low);
+    letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;
+  }
+  .operator-top .dots{display:flex;gap:5px;}
+  .operator-top .dots span{width:6px;height:6px;border-radius:50%;background:var(--line);}
+  .operator-top .dots span.on{background:var(--led-amber);box-shadow:0 0 6px var(--led-amber);}
+
+  .display-screen{
+    background:#0b0e0f;
+    border-radius:8px;
+    border:1px solid #05070789;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.6);
+    padding:18px 20px;
+    display:flex;align-items:center;gap:16px;
+    min-height:74px;
+  }
+  #codeInput{
+    flex:1;background:transparent;border:none;outline:none;
+    font-family:var(--disp);
+    font-size:clamp(28px, 7vw, 44px);
+    letter-spacing:0.09em;
+    color:var(--led-amber);
+    text-shadow:0 0 12px rgba(255,176,32,0.55), 0 0 2px rgba(255,176,32,0.8);
+    caret-color:var(--led-amber);
+    text-transform:uppercase;
+    min-width:0;
+  }
+  #codeInput::placeholder{
+    color:var(--led-amber-dim);
+    text-shadow:none;
+  }
+  .display-hint{
+    font-family:var(--mono);font-size:10px;color:var(--text-low);
+    letter-spacing:0.04em;white-space:nowrap;
+  }
+
+  .quickrow{
+    display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;
+  }
+  .quickrow button{
+    font-family:var(--mono);font-size:11.5px;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text-mid);
+    padding:6px 10px;border-radius:6px;cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .quickrow button:hover{border-color:var(--led-amber);color:var(--led-amber);}
+
+  .legend{
+    display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;
+    font-family:var(--mono);font-size:10.5px;color:var(--text-low);
+  }
+  .legend .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+
+  /* ===== Results ===== */
+  #results{margin-top:28px;}
+  .empty-state{
+    text-align:center;padding:60px 20px;color:var(--text-low);
+  }
+  .empty-state svg{width:46px;height:46px;opacity:0.35;margin-bottom:14px;}
+  .empty-state p{font-family:var(--mono);font-size:12.5px;letter-spacing:0.02em;max-width:360px;margin:0 auto;}
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:22px 24px;margin-bottom:18px;
+    animation:rise .28s ease;
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .card-head{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+    padding-bottom:14px;border-bottom:1px dashed var(--line);margin-bottom:16px;
+  }
+  .card-code{
+    font-family:var(--disp);font-size:30px;color:var(--led-amber);
+    text-shadow:0 0 10px rgba(255,176,32,0.35);letter-spacing:0.04em;
+  }
+  .card-name{font-size:15.5px;font-weight:600;color:var(--text-hi);margin-top:4px;}
+  .badge{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;
+    padding:5px 10px;border-radius:100px;white-space:nowrap;border:1px solid transparent;
+    flex-shrink:0;
+  }
+  .card-desc{
+    font-size:13.5px;line-height:1.6;color:var(--text-mid);margin-bottom:18px;
+  }
+  .section-label{
+    font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;
+    color:var(--text-low);margin-bottom:10px;
+  }
+  .cause-item{
+    display:grid;grid-template-columns:22px 1fr;gap:10px;
+    padding:12px 0;border-top:1px solid var(--line);
+  }
+  .cause-item:first-of-type{border-top:none;}
+  .cause-num{
+    font-family:var(--mono);font-size:11px;color:var(--text-low);padding-top:2px;
+  }
+  .cause-body b{
+    display:block;font-size:13.5px;color:var(--text-hi);font-weight:500;margin-bottom:4px;
+  }
+  .cause-body .sol{
+    font-size:13px;color:var(--text-mid);line-height:1.55;
+    padding-left:14px;border-left:2px solid var(--line);
+  }
+  .cause-body .sol::before{content:"→ ";color:var(--led-amber);}
+
+  .not-found{
+    text-align:center;padding:36px 20px;
+  }
+  .not-found .big{font-family:var(--disp);font-size:34px;color:var(--fault);text-shadow:0 0 10px rgba(255,90,90,0.4);}
+  .not-found p{color:var(--text-mid);font-size:13px;margin-top:10px;line-height:1.6;}
+
+  footer{
+    text-align:center;margin-top:40px;font-family:var(--mono);font-size:10.5px;color:var(--text-low);
+    letter-spacing:0.03em;
+  }
+  footer a{color:var(--text-mid);}
+
+  ::selection{background:rgba(255,176,32,0.25);}
+
+  @media (max-width:480px){
+    .rating-plate{display:none;}
+    .card{padding:18px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brandmark">
+      <div class="chip">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 12L10 4V9H20L14 20V15H4V12Z" stroke="#ffb020" stroke-width="1.4" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Diagnóstico de Falhas</h1>
+        <div class="sub">Inversor Yaskawa · Série V1000</div>
+      </div>
+    </div>
+    <div class="rating-plate">
+      MANUAL DE REFERÊNCIA <b>TOPP C710606 22A</b><br>
+      FALHAS · ALARMES · oPE · AUTO-AJUSTE
+    </div>
+  </header>
+
+  <div class="operator">
+    <div class="operator-top">
+      <span>Operador Digital · LED Display</span>
+      <div class="dots"><span class="on"></span><span></span><span></span></div>
+    </div>
+    <div class="display-screen">
+      <input id="codeInput" type="text" placeholder="oC" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+      <div class="display-hint">ENTER ↵</div>
+    </div>
+    <div class="quickrow" id="quickrow"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--fault)"></span>Falha</span>
+      <span><span class="dot" style="background:var(--alarm)"></span>Alarme</span>
+      <span><span class="dot" style="background:var(--ope)"></span>oPE</span>
+      <span><span class="dot" style="background:var(--auto)"></span>Auto-ajuste</span>
+    </div>
+  </div>
+
+  <div id="results"></div>
+
+  <footer>
+    Conteúdo técnico compilado do manual do inversor Yaskawa V1000 (TOPP C710606 22A) para consulta rápida em campo.<br>
+    Sempre confirme os procedimentos com o manual completo antes de intervir no equipamento.
+  </footer>
+</div>
+
+<script>
+// Base de dados de diagnóstico - Yaskawa V1000
+// Conteúdo baseado no Manual Técnico YASKAWA ELECTRIC TOPP C710606 22A - Drive CA série V1000
+// Textos de causas/soluções reescritos e resumidos a partir do manual para uso rápido em campo.
+
+const FAULT_DB = [
+  // ============ FALHAS (seção 5.4) ============
+  {
+    code: "bUS", category: "falha", name: "Erro de comunicação opcional",
+    desc: "A comunicação com o cartão opcional foi perdida depois de estabelecida, ou a referência de frequência está atribuída a um cartão opcional que não responde.",
+    items: [
+      { causa: "Nenhum sinal recebido do CLP.", solucao: "Verifique se há fiação com defeito entre o CLP e o drive." },
+      { causa: "Cabo de comunicação danificado ou em curto.", solucao: "Corrija a fiação; verifique fios soltos e curtos-circuitos." },
+      { causa: "Ruído elétrico corrompendo os dados de comunicação.", solucao: "Blinde e aterre corretamente o cabo de comunicação, separe-o da fiação de potência e use supressores de pico em contatores/relés próximos." },
+      { causa: "Cartão opcional danificado.", solucao: "Substitua o cartão opcional se a fiação estiver correta e o erro persistir." },
+      { causa: "Cartão opcional mal encaixado no drive.", solucao: "Desligue o drive e reinstale o cartão opcional, verificando o alinhamento dos pinos." },
+    ]
+  },
+  {
+    code: "CE", category: "falha", name: "Erro de comunicação MEMOBUS/Modbus",
+    desc: "O drive não recebeu dados de controle dentro do tempo configurado em H5-09.",
+    items: [
+      { causa: "Fiação de comunicação com defeito ou em curto.", solucao: "Corrija a fiação e verifique conexões soltas." },
+      { causa: "Ruído elétrico interferindo na comunicação.", solucao: "Use cabo blindado recomendado, aterre a blindagem em um único ponto e afaste os cabos de sinal da potência." },
+      { causa: "Tempo de detecção CE (H5-09) ajustado curto demais para o ciclo real do mestre.", solucao: "Aumente o valor de H5-09 ou ajuste o software do CLP mestre." },
+      { causa: "Cabo de comunicação desconectado ou danificado.", solucao: "Verifique o conector e substitua o cabo se necessário." },
+    ]
+  },
+  {
+    code: "CF", category: "falha", name: "Falha de controle",
+    desc: "O limite de torque foi atingido continuamente por 3 segundos ou mais durante uma parada por rampa em controle vetorial de malha aberta.",
+    items: [
+      { causa: "Parâmetros do motor mal ajustados.", solucao: "Revise os parâmetros do motor e refaça o auto-ajuste." },
+      { causa: "Limite de torque ajustado baixo demais.", solucao: "Aumente o limite de torque em L7-01 a L7-04." },
+      { causa: "Inércia da carga muito alta para o tempo de desaceleração.", solucao: "Aumente o tempo de desaceleração (C1-02/-04/-06/-08) ou ajuste a frequência mínima antes de interromper o comando." },
+    ]
+  },
+  {
+    code: "CoF", category: "falha", name: "Falha do offset de corrente",
+    desc: "Problema no circuito de detecção de corrente, ou o drive tentou uma partida com o motor IPM ainda parando por inércia.",
+    items: [
+      { causa: "Offset de corrente fora da faixa ao reiniciar motor IPM em rotação por inércia.", solucao: "Habilite a procura de velocidade na partida (b3-01 = 1) ou use um terminal multifuncional para procura de velocidade (H1-oo = 61 ou 62)." },
+      { causa: "Tentativa de gravação de parâmetros com a alimentação do drive sendo desligada.", solucao: "Reinicialize o drive (A1-03)." },
+    ]
+  },
+  {
+    code: "CPF02", category: "falha", name: "Erro de conversão A/D",
+    desc: "Falha detectada na conversão analógico-digital do circuito de controle.",
+    items: [
+      { causa: "Circuito de controle danificado.", solucao: "Desligue e religue a alimentação; se persistir, substitua o drive." },
+      { causa: "Curto-circuito nos terminais externos de controle (+V, CA) ou corrente de entrada acima do permitido.", solucao: "Corrija a fiação dos terminais de controle e reduza a corrente no terminal +V para 20 mA ou menos." },
+    ]
+  },
+  {
+    code: "CPF03", category: "falha", name: "Erro nos dados PWM",
+    desc: "Problema detectado nos dados do sinal PWM.",
+    items: [{ causa: "Hardware do drive danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF06", category: "falha", name: "Erro nos dados da EEPROM",
+    desc: "Erro nos dados armazenados na memória EEPROM do drive.",
+    items: [
+      { causa: "Circuito de controle danificado.", solucao: "Desligue/religue a alimentação; substitua o drive se persistir." },
+      { causa: "Gravação de parâmetros interrompida por queda de alimentação.", solucao: "Reinicialize o drive (A1-03)." },
+    ]
+  },
+  {
+    code: "CPF07", category: "falha", name: "Erro de comunicação da placa de terminais",
+    desc: "Falha de comunicação entre a placa de terminais e a placa de controle.",
+    items: [{ causa: "Erro de comunicação interno entre as placas.", solucao: "Desligue a alimentação e reconecte os terminais do circuito de controle." }]
+  },
+  {
+    code: "CPF08", category: "falha", name: "Falha de comunicação serial da EEPROM",
+    desc: "A comunicação com a EEPROM não está funcionando corretamente.",
+    items: [{ causa: "Placa de terminais ou de controle mal conectada.", solucao: "Desligue a alimentação e verifique as conexões entre as placas." }]
+  },
+  {
+    code: "CPF11", category: "falha", name: "Falha da RAM", desc: "Falha de hardware na memória RAM do drive.",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF12", category: "falha", name: "Falha da memória FLASH", desc: "Problema na memória ROM/FLASH do drive.",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF13", category: "falha", name: "Exceção do circuito watchdog", desc: "Falha detectada no autodiagnóstico do circuito watchdog.",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF14", category: "falha", name: "Falha no circuito de controle", desc: "Erro de CPU, geralmente causado por ruído elétrico.",
+    items: [{ causa: "Hardware danificado / interferência de ruído na CPU.", solucao: "Substitua o drive; revise o aterramento e blindagem contra ruído." }]
+  },
+  {
+    code: "CPF16", category: "falha", name: "Falha do relógio", desc: "Erro no circuito de relógio (clock) interno.",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF17", category: "falha", name: "Falha de temporização", desc: "Erro de temporização durante um procedimento interno do drive.",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF18", category: "falha", name: "Falha no circuito de controle", desc: "Erro de CPU (funcionamento incorreto por ruído, etc.).",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF19", category: "falha", name: "Falha no circuito de controle", desc: "Erro de CPU (funcionamento incorreto por ruído, etc.).",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF20 / CPF21", category: "falha", name: "Falha combinada de RAM/FLASH/watchdog/relógio",
+    desc: "Ocorreu uma entre: falha de RAM, erro de memória FLASH, exceção do watchdog ou erro de relógio.",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF22", category: "falha", name: "Falha de conversão A/D", desc: "Erro na conversão analógico-digital.",
+    items: [{ causa: "Circuito de controle danificado.", solucao: "Desligue/religue a alimentação; substitua o drive se o problema persistir." }]
+  },
+  {
+    code: "CPF23", category: "falha", name: "Falha de feedback do PWM", desc: "Erro no sinal de retorno (feedback) do PWM.",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "CPF24", category: "falha", name: "Falha do sinal de capacidade do drive",
+    desc: "Foi identificada, na energização, uma capacidade de drive inexistente/incompatível.",
+    items: [{ causa: "Hardware danificado.", solucao: "Substitua o drive." }]
+  },
+  {
+    code: "dEv", category: "falha", name: "Desvio de velocidade (V/f simples com PG)",
+    desc: "O desvio entre a velocidade real (via entrada de pulso RP) e a referência excedeu o ajuste de F1-10 por mais tempo que F1-11.",
+    items: [
+      { causa: "Carga muito pesada.", solucao: "Reduza a carga." },
+      { causa: "Tempos de aceleração/desaceleração curtos demais.", solucao: "Aumente C1-01 a C1-08." },
+      { causa: "Carga travada mecanicamente.", solucao: "Verifique a máquina acionada." },
+      { causa: "Parâmetros F1-10/F1-11 mal ajustados.", solucao: "Revise os ajustes de F1-10 e F1-11." },
+      { causa: "Freio do motor acionado indevidamente.", solucao: "Verifique o funcionamento do freio mecânico do motor." },
+    ]
+  },
+  {
+    code: "dWFL / dWAL", category: "falha", name: "Falha do DriveWorksEZ",
+    desc: "Falha ou saída de erro gerada pelo programa DriveWorksEZ carregado no drive.",
+    items: [{ causa: "O programa DriveWorksEZ apresentou uma falha.", solucao: "Identifique e corrija a causa da falha dentro da lógica programada no DriveWorksEZ." }]
+  },
+  {
+    code: "EF0", category: "falha", name: "Falha externa do cartão opcional", desc: "Condição de falha externa recebida através do cartão opcional.",
+    items: [
+      { causa: "Falha externa recebida do CLP (com F6-03 = 3).", solucao: "Elimine a causa da falha externa e remova o sinal de falha vindo do CLP." },
+      { causa: "Erro no programa do CLP.", solucao: "Revise e corrija o programa do CLP." },
+    ]
+  },
+  {
+    code: "EF1", category: "falha", name: "Falha externa (terminal S1)", desc: "Falha externa recebida no terminal de entrada multifuncional S1.",
+    items: [
+      { causa: "Dispositivo externo disparou a falha.", solucao: "Elimine a causa externa e resete a falha." },
+      { causa: "Fiação incorreta no terminal designado.", solucao: "Confira e reconecte corretamente o cabo de sinal." },
+      { causa: "Terminal não utilizado ajustado como falha externa (H1-oo = 20~2F).", solucao: "Corrija o ajuste da função do terminal." },
+    ]
+  },
+  { code: "EF2", category: "falha", name: "Falha externa (terminal S2)", desc: "Falha externa recebida no terminal de entrada multifuncional S2.",
+    items: [
+      { causa: "Dispositivo externo disparou a falha.", solucao: "Elimine a causa externa e resete a falha." },
+      { causa: "Fiação incorreta no terminal designado.", solucao: "Confira e reconecte corretamente o cabo de sinal." },
+    ] },
+  { code: "EF3", category: "falha", name: "Falha externa (terminal S3)", desc: "Falha externa recebida no terminal de entrada multifuncional S3.",
+    items: [
+      { causa: "Dispositivo externo disparou a falha.", solucao: "Elimine a causa externa e resete a falha." },
+      { causa: "Fiação incorreta no terminal designado.", solucao: "Confira e reconecte corretamente o cabo de sinal." },
+    ] },
+  { code: "EF4", category: "falha", name: "Falha externa (terminal S4)", desc: "Falha externa recebida no terminal de entrada multifuncional S4.",
+    items: [
+      { causa: "Dispositivo externo disparou a falha.", solucao: "Elimine a causa externa e resete a falha." },
+      { causa: "Fiação incorreta no terminal designado.", solucao: "Confira e reconecte corretamente o cabo de sinal." },
+    ] },
+  { code: "EF5", category: "falha", name: "Falha externa (terminal S5)", desc: "Falha externa recebida no terminal de entrada multifuncional S5.",
+    items: [
+      { causa: "Dispositivo externo disparou a falha.", solucao: "Elimine a causa externa e resete a falha." },
+      { causa: "Fiação incorreta no terminal designado.", solucao: "Confira e reconecte corretamente o cabo de sinal." },
+    ] },
+  { code: "EF6", category: "falha", name: "Falha externa (terminal S6)", desc: "Falha externa recebida no terminal de entrada multifuncional S6.",
+    items: [
+      { causa: "Dispositivo externo disparou a falha.", solucao: "Elimine a causa externa e resete a falha." },
+      { causa: "Fiação incorreta no terminal designado.", solucao: "Confira e reconecte corretamente o cabo de sinal." },
+    ] },
+  { code: "EF7", category: "falha", name: "Falha externa (terminal S7)", desc: "Falha externa recebida no terminal de entrada multifuncional S7.",
+    items: [
+      { causa: "Dispositivo externo disparou a falha.", solucao: "Elimine a causa externa e resete a falha." },
+      { causa: "Fiação incorreta no terminal designado.", solucao: "Confira e reconecte corretamente o cabo de sinal." },
+    ] },
+  {
+    code: "Err", category: "falha", name: "Erro de escrita na EEPROM",
+    desc: "Os dados enviados não são compatíveis com o que está sendo gravado na EEPROM.",
+    items: [
+      { causa: "Ajuste de parâmetro inválido ou incompleto.", solucao: "Pressione a tecla ENTER novamente e corrija o valor do parâmetro." },
+      { causa: "Falha momentânea na gravação.", solucao: "Desligue e religue a alimentação do drive." },
+    ]
+  },
+  {
+    code: "FbH", category: "falha", name: "Feedback do PID excessivo",
+    desc: "O sinal de feedback do PID ultrapassou o nível de b5-36 por mais tempo que b5-37 (com b5-12 = 2 ou 5).",
+    items: [
+      { causa: "Parâmetros b5-36/b5-37 mal ajustados.", solucao: "Revise os valores de b5-36 e b5-37." },
+      { causa: "Fiação do sensor de feedback com defeito.", solucao: "Corrija a fiação do feedback PID." },
+      { causa: "Sensor de feedback danificado.", solucao: "Verifique e substitua o sensor se necessário." },
+    ]
+  },
+  {
+    code: "FbL", category: "falha", name: "Perda do feedback do PID",
+    desc: "O feedback do PID caiu abaixo do nível de b5-13 por mais tempo que b5-14 (com b5-12 = 2).",
+    items: [
+      { causa: "Parâmetros b5-13/b5-14 mal ajustados.", solucao: "Revise os valores de b5-13 e b5-14." },
+      { causa: "Fiação do feedback PID incorreta.", solucao: "Corrija a fiação." },
+      { causa: "Sensor de feedback danificado.", solucao: "Verifique e substitua o sensor se necessário." },
+    ]
+  },
+  {
+    code: "GF", category: "falha", name: "Falha de aterramento",
+    desc: "A corrente de curto-circuito para o terra excedeu 50% da corrente nominal de saída do drive.",
+    items: [
+      { causa: "Isolamento do motor danificado.", solucao: "Meça a resistência de isolamento do motor e substitua-o se necessário." },
+      { causa: "Cabo do motor danificado causando curto para o terra.", solucao: "Verifique a resistência entre o cabo e o terra; corrija o curto e substitua o cabo se preciso." },
+      { causa: "Fuga de corrente de saída elevada.", solucao: "Reduza a frequência de chaveamento (portadora) e/ou a capacitância parasita do cabeamento." },
+      { causa: "Offset de corrente ajustado durante partida de motor IPM em rotação livre.", solucao: "Habilite a procura de velocidade na partida (b3-01 = 1)." },
+    ]
+  },
+  {
+    code: "LF", category: "falha", name: "Desbalanceamento da corrente de saída",
+    desc: "Desbalanceamento de fase detectado na saída do drive (com L8-07 = 1 ou 2).",
+    items: [
+      { causa: "Cabo de saída desconectado.", solucao: "Verifique a fiação e reconecte corretamente." },
+      { causa: "Enrolamento do motor danificado.", solucao: "Meça a resistência entre as bobinas e substitua o motor se necessário." },
+      { causa: "Terminal de saída frouxo.", solucao: "Reaperte os terminais com o torque especificado no manual." },
+      { causa: "Motor usado com corrente muito abaixo (menos de 5%) da nominal do drive.", solucao: "Verifique a compatibilidade de capacidade entre drive e motor." },
+      { causa: "Transistor de saída danificado.", solucao: "Substitua o drive." },
+    ]
+  },
+  {
+    code: "LF2", category: "falha", name: "Desbalanceamento da corrente de saída (fase perdida)",
+    desc: "Uma ou mais fases da corrente de saída estão ausentes.",
+    items: [
+      { causa: "Fiação com defeito ou conexão solta na saída do drive.", solucao: "Corrija a fiação." },
+      { causa: "Terminais de saída frouxos.", solucao: "Reaperte com o torque especificado." },
+      { causa: "Impedância irregular entre as fases do motor.", solucao: "Meça a resistência linha a linha do motor; substitua-o se os valores forem diferentes entre fases." },
+    ]
+  },
+  {
+    code: "oC", category: "falha", name: "Sobrecorrente",
+    desc: "A corrente de saída detectada ultrapassou o nível especificado de proteção do drive.",
+    items: [
+      { causa: "Motor danificado por sobreaquecimento ou isolamento comprometido.", solucao: "Verifique a resistência de isolamento e substitua o motor se necessário." },
+      { causa: "Curto-circuito ou fuga para o terra no cabo do motor.", solucao: "Corrija o curto-circuito antes de religar a alimentação." },
+      { causa: "Carga muito pesada ou variação súbita de corrente.", solucao: "Reduza a carga ou use um drive de maior capacidade." },
+      { causa: "Tempos de aceleração/desaceleração curtos demais para a inércia da carga.", solucao: "Aumente os tempos de acel/desacel (C1-01 a C1-07) e/ou use curva S (C2-01 a C2-04)." },
+      { causa: "Motor maior que o permitido para o drive.", solucao: "Verifique a compatibilidade entre a capacidade do drive e do motor." },
+      { causa: "Ajustes V/f incompatíveis com as características do motor.", solucao: "Corrija E1-04 a E1-10 (ou E3-04 a E3-10 para o segundo motor)." },
+      { causa: "Interferência de ruído elétrico.", solucao: "Revise aterramento e blindagem das linhas de sinal e potência." },
+      { causa: "Código de motor incorreto para motor PM Yaskawa.", solucao: "Ajuste E5-01 com o código correto do motor." },
+    ]
+  },
+  {
+    code: "oFA00", category: "falha", name: "Falha no cartão opcional (porta A) - incompatível",
+    desc: "Cartão opcional incompatível com o drive.",
+    items: [{ causa: "Cartão opcional incompatível.", solucao: "Substitua por um cartão opcional compatível com este modelo de drive." }]
+  },
+  {
+    code: "oFA01", category: "falha", name: "Falha no cartão opcional (porta A) - conexão",
+    desc: "Cartão opcional conectado incorretamente ao drive.",
+    items: [{ causa: "Conexão incorreta do cartão opcional.", solucao: "Desligue a alimentação e reconecte o cartão corretamente." }]
+  },
+  {
+    code: "oFA03", category: "falha", name: "Falha no cartão opcional (porta A) - autodiagnóstico",
+    desc: "Erro identificado no autodiagnóstico do cartão opcional.",
+    items: [{ causa: "Cartão ou hardware danificado.", solucao: "Substitua o cartão opcional; contate a assistência técnica Yaskawa." }]
+  },
+  {
+    code: "oFA04", category: "falha", name: "Falha no cartão opcional (porta A) - memória",
+    desc: "Erro ao tentar gravar na memória do cartão opcional.",
+    items: [{ causa: "Cartão ou hardware danificado.", solucao: "Substitua o cartão opcional; contate a assistência técnica Yaskawa." }]
+  },
+  {
+    code: "oFA30-oFA43", category: "falha", name: "Falha no cartão opcional (porta A) - comunicação ID",
+    desc: "Erro de comunicação de identificação entre o drive e o cartão opcional.",
+    items: [{ causa: "Cartão ou hardware danificado.", solucao: "Substitua o cartão opcional; contate a assistência técnica Yaskawa." }]
+  },
+  {
+    code: "oH", category: "falha", name: "Sobreaquecimento do dissipador de calor",
+    desc: "A temperatura do dissipador ultrapassou o limite definido em L8-02 (90-100°C).",
+    items: [
+      { causa: "Temperatura ambiente muito alta.", solucao: "Melhore a ventilação do painel; instale climatização se necessário." },
+      { causa: "Carga muito pesada.", solucao: "Meça a corrente de saída e reduza a carga; considere reduzir a frequência portadora (C6-02)." },
+      { causa: "Ventilador de resfriamento interno parado.", solucao: "Substitua o ventilador e resete o parâmetro de manutenção (o4-03 = 0)." },
+    ]
+  },
+  {
+    code: "oH1", category: "falha", name: "Sobreaquecimento 1",
+    desc: "Temperatura do dissipador ultrapassou o limite definido em L8-02 (100-110°C).",
+    items: [
+      { causa: "Temperatura ambiente muito alta.", solucao: "Melhore a ventilação e resfriamento ao redor do drive." },
+      { causa: "Carga muito pesada.", solucao: "Reduza a carga e/ou a frequência portadora (C6-02)." },
+      { causa: "Ventilador interno no fim da vida útil.", solucao: "Verifique o tempo de manutenção do ventilador (U4-04); substitua se acima de 90%." },
+      { causa: "Corrente no terminal +V acima do permitido.", solucao: "Ajuste a corrente para 20 mA ou menos." },
+    ]
+  },
+  {
+    code: "oH4", category: "falha", name: "Falha de sobreaquecimento do motor (entrada PTC)",
+    desc: "O sinal de temperatura do motor (via entrada analógica configurada como PTC) ultrapassou o nível de falha.",
+    items: [
+      { causa: "Motor superaquecido por carga, ciclo ou ventilação inadequados.", solucao: "Reduza a carga, ajuste tempos de acel/desacel e confira a corrente nominal em E2-01." },
+      { causa: "Sistema de resfriamento do motor com defeito.", solucao: "Repare ou substitua o sistema de arrefecimento do motor." },
+    ]
+  },
+  {
+    code: "oL1", category: "falha", name: "Sobrecarga do motor",
+    desc: "A proteção eletrotérmica do motor (relé térmico interno) foi acionada.",
+    items: [
+      { causa: "Carga muito pesada ou tempos de acel/desacel curtos.", solucao: "Reduza a carga e aumente os tempos de aceleração/desaceleração (C1-01 a C1-08)." },
+      { causa: "Corrente nominal do motor mal ajustada em E2-01.", solucao: "Insira a corrente nominal da placa de identificação do motor." },
+      { causa: "Vários motores num único drive com a proteção L1-01 habilitada.", solucao: "Desabilite a proteção interna (L1-01 = 0) e instale relés térmicos individuais em cada motor." },
+      { causa: "Parâmetros da procura de velocidade mal ajustados.", solucao: "Ajuste b3-02/b3-03 e habilite o tipo de estimativa após o auto-ajuste (b3-24 = 1)." },
+    ]
+  },
+  {
+    code: "oL2", category: "falha", name: "Sobrecarga do drive",
+    desc: "O sensor térmico interno do próprio drive acionou a proteção de sobrecarga.",
+    items: [
+      { causa: "Carga muito pesada para a capacidade do drive.", solucao: "Reduza a carga ou substitua por um drive de maior capacidade." },
+      { causa: "Operação prolongada em baixa velocidade.", solucao: "Reduza a carga em baixa rotação, use motor apropriado ou reduza a frequência portadora (C6-02)." },
+      { causa: "Compensação de torque excessiva.", solucao: "Reduza o ganho de compensação de torque (C4-01)." },
+    ]
+  },
+  {
+    code: "oL3", category: "falha", name: "Detecção de sobretorque 1",
+    desc: "A corrente/torque ultrapassou o nível de L6-02 por mais tempo que L6-03.",
+    items: [
+      { causa: "Parâmetros L6-02/L6-03 inadequados para a carga.", solucao: "Revise os ajustes de L6-02 e L6-03." },
+      { causa: "Falha mecânica na carga (travamento).", solucao: "Inspecione a máquina acionada e elimine a causa do travamento." },
+    ]
+  },
+  {
+    code: "oL4", category: "falha", name: "Detecção de sobretorque 2",
+    desc: "A corrente/torque ultrapassou o nível de L6-05 por mais tempo que L6-06.",
+    items: [
+      { causa: "Parâmetros L6-05/L6-06 inadequados para a carga.", solucao: "Revise os ajustes de L6-05 e L6-06." },
+      { causa: "Falha mecânica na carga (travamento).", solucao: "Inspecione a máquina acionada e elimine a causa do travamento." },
+    ]
+  },
+  {
+    code: "oL7", category: "falha", name: "Frenagem de alto escorregamento OL",
+    desc: "A frequência de saída permaneceu constante por mais tempo que n3-04 durante a frenagem de alto escorregamento.",
+    items: [
+      { causa: "Inércia de carga excessiva ou carga arrastando o motor.", solucao: "Reduza os tempos de desaceleração ou use um resistor de frenagem." },
+      { causa: "Tempo de sobrecarga da frenagem (n3-04) ajustado curto demais.", solucao: "Aumente n3-04 e/ou instale um relé térmico." },
+    ]
+  },
+  {
+    code: "oPr", category: "falha", name: "Falha de conexão do operador digital",
+    desc: "O operador (LCD/keypad) foi desconectado do drive enquanto configurado como fonte de comando local.",
+    items: [{ causa: "Operador conectado incorretamente ou cabo danificado.", solucao: "Verifique a conexão, substitua o cabo se necessário e reconecte o operador com a alimentação desligada." }]
+  },
+  {
+    code: "oS", category: "falha", name: "Sobrevelocidade (V/f simples com PG)",
+    desc: "O feedback de velocidade via entrada de pulso (RP) ultrapassou o nível ajustado em F1-08.",
+    items: [
+      { causa: "Overshoot/undershoot na resposta de velocidade.", solucao: "Ajuste o ganho proporcional (C5-01) e o tempo integral (C5-02) do controle de velocidade." },
+      { causa: "Ajustes de escala de pulsos PG incorretos.", solucao: "Configure H6-02 = 100% considerando o número de pulsos na velocidade máxima." },
+      { causa: "Nível/tempo de detecção de sobrevelocidade mal ajustados.", solucao: "Revise F1-08 e F1-09." },
+    ]
+  },
+  {
+    code: "ov", category: "falha", name: "Sobretensão do barramento CC",
+    desc: "A tensão do barramento CC ultrapassou o nível de disparo (~410V classe 200V / ~820V classe 400V).",
+    items: [
+      { causa: "Tempo de desaceleração curto demais, gerando energia regenerativa excessiva.", solucao: "Aumente o tempo de desaceleração (C1-02/-04/-06/-08) e/ou instale resistor de frenagem." },
+      { causa: "Aceleração súbita disparando o alarme.", solucao: "Aumente o tempo de aceleração e use curvas S." },
+      { causa: "Carga de frenagem excessiva.", solucao: "Reduza o torque de frenagem, use opção de frenagem dinâmica ou aumente o tempo de desaceleração." },
+      { causa: "Picos de tensão na alimentação de entrada.", solucao: "Instale um reator CC ou CA na entrada." },
+      { causa: "Falha de aterramento no circuito de saída sobrecarregando o barramento CC.", solucao: "Verifique e corrija curtos para o terra no cabeamento do motor." },
+    ]
+  },
+  {
+    code: "PF", category: "falha", name: "Perda de fase da entrada",
+    desc: "A alimentação de entrada apresenta fase aberta ou grande desbalanceamento entre fases (com L8-05 = 1).",
+    items: [
+      { causa: "Desbalanceamento de fase na entrada do drive.", solucao: "Verifique e corrija erros de fiação na entrada de força." },
+      { causa: "Terminais de alimentação de entrada frouxos.", solucao: "Reaperte os terminais com o torque especificado no manual." },
+    ]
+  },
+  {
+    code: "PGo", category: "falha", name: "Desligamento PG (V/f simples com PG)",
+    desc: "Nenhum pulso recebido na entrada RP por tempo maior que o ajustado em F1-14.",
+    items: [
+      { causa: "Entrada de pulso (RP) desconectada.", solucao: "Reconecte o cabo da entrada de pulso." },
+      { causa: "Fiação da entrada de pulso incorreta.", solucao: "Corrija a fiação." },
+      { causa: "Freio do motor acionado indevidamente.", solucao: "Verifique o funcionamento do freio mecânico." },
+    ]
+  },
+  {
+    code: "rH", category: "falha", name: "Sobreaquecimento do resistor de frenagem",
+    desc: "A proteção do resistor de frenagem foi ativada (com L8-01 = 1).",
+    items: [
+      { causa: "Tempo de desaceleração curto com energia regenerativa excessiva.", solucao: "Reduza a carga de frenagem ou aumente os tempos de acel/desacel." },
+      { causa: "Resistor de frenagem subdimensionado para a aplicação.", solucao: "Selecione um resistor de frenagem com capacidade adequada." },
+    ]
+  },
+  {
+    code: "rr", category: "falha", name: "Transistor de frenagem dinâmica",
+    desc: "O transistor de frenagem dinâmica interno apresentou falha.",
+    items: [{ causa: "Transistor de frenagem ou circuito de controle danificado.", solucao: "Desligue/religue a alimentação; se a falha persistir, substitua o drive." }]
+  },
+  {
+    code: "SEr", category: "falha", name: "Muitos reinícios com procura de velocidade",
+    desc: "O número de tentativas de procura de velocidade excedeu o valor de b3-19.",
+    items: [
+      { causa: "Parâmetros de procura de velocidade mal ajustados.", solucao: "Ajuste o ganho (b3-10), a corrente (b3-17) e o tempo de detecção (b3-18)." },
+      { causa: "Motor parando por inércia em sentido contrário ao comando.", solucao: "Habilite a procura de velocidade bidirecional (b3-14 = 1)." },
+    ]
+  },
+  {
+    code: "STo", category: "falha", name: "Detecção de pull-out (motor PM)",
+    desc: "Ocorreu perda de sincronismo (pull-out) em motor de ímã permanente.",
+    items: [
+      { causa: "Código do motor incorreto em E5-01.", solucao: "Insira o código correto do motor PM Yaskawa ou os dados do relatório de teste." },
+      { causa: "Carga ou inércia muito elevadas.", solucao: "Aumente n8-55 (inércia da carga) e n8-51 (corrente de pull-in) ou reduza a carga." },
+      { causa: "Tempos de aceleração/desaceleração curtos demais.", solucao: "Aumente C1-01 a C1-08 e ajuste a curva S (C2-01)." },
+    ]
+  },
+  {
+    code: "UL3", category: "falha", name: "Detecção 1 de subtorque",
+    desc: "A corrente/torque caiu abaixo do nível mínimo definido em L6-02 por mais tempo que L6-03.",
+    items: [
+      { causa: "Parâmetros L6-02/L6-03 inadequados.", solucao: "Revise os ajustes de L6-02 e L6-03." },
+      { causa: "Falha mecânica no sistema de transmissão (correia rompida, acoplamento solto, etc.).", solucao: "Inspecione a transmissão mecânica em busca de peças quebradas." },
+    ]
+  },
+  {
+    code: "UL4", category: "falha", name: "Detecção 2 de subtorque",
+    desc: "A corrente/torque caiu abaixo do nível mínimo definido em L6-05 por mais tempo que L6-06.",
+    items: [
+      { causa: "Parâmetros L6-05/L6-06 inadequados.", solucao: "Revise os ajustes de L6-05 e L6-06." },
+      { causa: "Falha mecânica no sistema de transmissão.", solucao: "Inspecione a transmissão mecânica em busca de peças quebradas." },
+    ]
+  },
+  {
+    code: "UL5", category: "falha", name: "Detecção 2 de fadiga mecânica",
+    desc: "As condições de operação coincidiram com os parâmetros de detecção de perda mecânica ajustados em L6-08.",
+    items: [{ causa: "Subtorque detectado conforme condição de L6-08.", solucao: "Verifique o estado mecânico da carga acionada." }]
+  },
+  {
+    code: "Uv1", category: "falha", name: "Subtensão do barramento CC",
+    desc: "A tensão do barramento CC caiu abaixo do nível de L2-05 com o drive parado.",
+    items: [
+      { causa: "Desbalanceamento de fase ou fiação incorreta na entrada.", solucao: "Corrija a fiação da alimentação de entrada." },
+      { causa: "Terminais de entrada frouxos.", solucao: "Reaperte os terminais com o torque especificado." },
+      { causa: "Tensão de entrada fora da faixa especificada.", solucao: "Corrija a tensão de alimentação para dentro da faixa nominal." },
+      { causa: "Capacitores do circuito principal desgastados.", solucao: "Verifique o tempo de manutenção dos capacitores (U4-05); substitua o drive se acima de 90%." },
+      { causa: "Transformador de entrada subdimensionado.", solucao: "Verifique a capacidade do transformador de alimentação." },
+    ]
+  },
+  {
+    code: "Uv2", category: "falha", name: "Falha de tensão da fonte de alimentação do controle",
+    desc: "A tensão de alimentação do circuito de controle está baixa demais.",
+    items: [
+      { causa: "Parâmetro L2-02 alterado sem unidade de tempo de retenção instalada (drives ≤7,5 kW).", solucao: "Corrija L2-02 ou instale a unidade opcional de retenção em perda momentânea." },
+      { causa: "Fiação da fonte de controle danificada.", solucao: "Desligue/religue a alimentação; substitua o drive se persistir." },
+    ]
+  },
+  {
+    code: "Uv3", category: "falha", name: "Subtensão 3 - falha do circuito de prevenção de energização",
+    desc: "O circuito de prevenção de corrente de energização (soft-start interno) falhou.",
+    items: [
+      { causa: "Contator do circuito de prevenção de energização danificado.", solucao: "Desligue/religue a alimentação; verifique o monitor U4-06 (vida útil) e substitua o drive se acima de 90%." },
+    ]
+  },
+
+  // ============ ALARMES (seção 5.5) ============
+  {
+    code: "bb", category: "alarme", name: "Bloco de base",
+    desc: "A saída do drive foi interrompida por um sinal externo de bloco de base.",
+    items: [{ causa: "Sinal de bloco de base externo acionado via terminal multifuncional (S1-S7).", solucao: "Verifique a lógica e o tempo do sinal externo de bloco de base." }]
+  },
+  {
+    code: "CALL", category: "alarme", name: "Erro de transmissão da comunicação serial",
+    desc: "A comunicação MEMOBUS/Modbus ainda não foi estabelecida, ou o mestre parou de se comunicar.",
+    items: [
+      { causa: "Fiação de comunicação com defeito, curto ou conexão solta.", solucao: "Corrija a fiação e reconecte os cabos soltos." },
+      { causa: "Erro de programação no lado mestre.", solucao: "Verifique a comunicação na partida e corrija a programação do mestre." },
+      { causa: "Resistor de terminação (mini chave DIP) mal ajustado no escravo.", solucao: "Ajuste a mini chave S2 de terminação para a posição ON conforme o manual." },
+    ]
+  },
+  {
+    code: "dnE", category: "alarme", name: "Drive desabilitado",
+    desc: "A entrada de 'habilitar drive' (H1-oo = 6A) foi desligada.",
+    items: [{ causa: "Sinal de habilitação do drive foi removido.", solucao: "Verifique a sequência de operação da entrada de habilitação." }]
+  },
+  {
+    code: "EF", category: "alarme", name: "Erro de comando avante/reverso",
+    desc: "Os comandos de avante e reverso ficaram fechados simultaneamente por mais de 0,5 s.",
+    items: [{ causa: "Erro na sequência de comandos.", solucao: "Verifique a lógica de comando e corrija o erro de sequência." }]
+  },
+  {
+    code: "Hbb / HbbF", category: "alarme", name: "Entrada do sinal de bloco de base (fiação/hardware)",
+    desc: "O sinal de entrada de fiação do bloco de base está aberto ou um canal está danificado.",
+    items: [
+      { causa: "Ausência de sinal no terminal H1.", solucao: "Verifique a fiação do terminal H1 e a lógica do CLP." },
+      { causa: "Canal interno do circuito de bloco de base danificado.", solucao: "Substitua o drive." },
+    ]
+  },
+  {
+    code: "HCA", category: "alarme", name: "Alarme de corrente",
+    desc: "A corrente ultrapassou o nível de alerta de sobrecorrente (150% da nominal).",
+    items: [
+      { causa: "Carga muito pesada para o torque disponível na aceleração.", solucao: "Reduza a carga, aumente os tempos de aceleração/desaceleração ou use um drive maior." },
+      { causa: "Motor incompatível com a capacidade do drive.", solucao: "Verifique se o motor está dentro da faixa de capacidade suportada." },
+    ]
+  },
+  {
+    code: "oH2", category: "alarme", name: "Aviso de sobreaquecimento do drive",
+    desc: "Sinal externo de aviso de sobreaquecimento inserido via terminal multifuncional (H1-oo = B).",
+    items: [{ causa: "Dispositivo externo sinalizando sobreaquecimento.", solucao: "Localize e corrija a causa do aviso externo de sobreaquecimento." }]
+  },
+  {
+    code: "PASS", category: "alarme", name: "Teste de comunicação concluído",
+    desc: "O teste de comunicação MEMOBUS/Modbus terminou com sucesso.",
+    items: [{ causa: "Indicação normal de teste concluído.", solucao: "Nenhuma ação necessária; o teste foi bem-sucedido." }]
+  },
+  {
+    code: "rUn", category: "alarme", name: "Chaveamento do motor durante a operação",
+    desc: "Foi inserido um comando de troca de motor enquanto o drive estava em operação.",
+    items: [{ causa: "Comando de chaveamento de motor enviado com o drive rodando.", solucao: "Envie o comando de chaveamento apenas com o drive parado." }]
+  },
+  {
+    code: "rUnC", category: "alarme", name: "Reset de falha durante comando de operação",
+    desc: "Um comando de operação foi recebido enquanto o reset de falha ainda estava em andamento.",
+    items: [{ causa: "Comando de operação presente durante o reset da falha.", solucao: "Remova o comando de operação antes de resetar a falha (verifique terminais externos e cartão opcional)." }]
+  },
+  {
+    code: "Uv", category: "alarme", name: "Subtensão (alarme)",
+    desc: "Tensão do barramento CC abaixo de L2-05, contator de prevenção de energização aberto, ou baixa tensão de controle, detectados na partida.",
+    items: [
+      { causa: "Perda de fase ou fiação solta na entrada.", solucao: "Corrija a fiação e reaperte os terminais de entrada com o torque especificado." },
+      { causa: "Tensão de entrada fora da faixa.", solucao: "Ajuste a tensão de alimentação para dentro da faixa nominal do drive." },
+      { causa: "Capacitores internos desgastados.", solucao: "Verifique U4-05; substitua o drive se acima de 90% de vida útil." },
+      { causa: "Lâmpada indicadora CHARGE queimada ou desconectada.", solucao: "Substitua o drive." },
+    ]
+  },
+
+  // ============ ERROS DE PROGRAMAÇÃO oPE (seção 5.6) ============
+  {
+    code: "oPE01", category: "oPE", name: "Falha no ajuste da capacidade do drive",
+    desc: "O valor ajustado em o2-04 não corresponde à capacidade real do drive.",
+    items: [{ causa: "Parâmetro o2-04 incompatível com o hardware.", solucao: "Corrija o valor ajustado em o2-04 para a capacidade real do drive." }]
+  },
+  {
+    code: "oPE02", category: "oPE", name: "Erro de ajuste da faixa do parâmetro",
+    desc: "Um ou mais parâmetros foram ajustados fora da faixa permitida.",
+    items: [{ causa: "Parâmetro fora da faixa válida.", solucao: "Consulte U1-18 para identificar o parâmetro e corrija seu valor." }]
+  },
+  {
+    code: "oPE03", category: "oPE", name: "Erro de seleção da entrada multifuncional",
+    desc: "Foi atribuída uma combinação conflitante de funções às entradas multifuncionais H1-01 a H1-07.",
+    items: [{ causa: "Duas entradas com a mesma função, ou funções complementares (ex.: Para cima/Para baixo) ajustadas de forma incompleta.", solucao: "Revise os ajustes de H1-01 a H1-07 garantindo que cada função apareça de forma coerente e sem conflitos." }]
+  },
+  {
+    code: "oPE04", category: "oPE", name: "Inicialização necessária",
+    desc: "Os parâmetros salvos na placa de terminais não são mais compatíveis com a placa de controle (geralmente após troca de drive ou placas).",
+    items: [{ causa: "Placa de controle ou de terminais substituída.", solucao: "Para reaproveitar os parâmetros salvos, ajuste A1-03 = 5550; para inicializar do zero, ajuste A1-03 = 1110 ou 2220." }]
+  },
+  {
+    code: "oPE05", category: "oPE", name: "Erro de seleção do comando de execução",
+    desc: "O comando de operação/referência está atribuído a um cartão opcional ou entrada não instalada/configurada.",
+    items: [
+      { causa: "Referência ou comando atribuído a um cartão opcional ausente.", solucao: "Instale o cartão opcional correspondente ou altere a fonte de referência/comando." },
+      { causa: "Referência atribuída à entrada de pulso, mas H6-01 não configurado para isso.", solucao: "Ajuste H6-01 = 0." },
+    ]
+  },
+  {
+    code: "oPE07", category: "oPE", name: "Erro de seleção de entrada analógica multifuncional",
+    desc: "Ajuste conflitante entre as entradas analógicas multifuncionais (H3-02/H3-10) e as funções de PID.",
+    items: [{ causa: "H3-02 e H3-10 configurados de forma conflitante entre si ou com o PID.", solucao: "Ajuste H3-02/H3-10 para funções diferentes e compatíveis com a configuração do PID em uso." }]
+  },
+  {
+    code: "oPE08", category: "oPE", name: "Erro de seleção de parâmetro",
+    desc: "Foi ativada uma função incompatível com o método de controle do motor selecionado (A1-02).",
+    items: [
+      { causa: "Função exclusiva de controle vetorial usada em V/f (ou vice-versa).", solucao: "Verifique o método de controle (A1-02) e as funções compatíveis com ele." },
+      { causa: "Parâmetros do motor PM (E5-02 a E5-24) incompletos ou inconsistentes.", solucao: "Preencha corretamente os parâmetros E5 de acordo com o código do motor ou relatório de teste." },
+    ]
+  },
+  {
+    code: "oPE09", category: "oPE", name: "Falha na seleção do controle PID",
+    desc: "Configuração incoerente entre o controle PID (b5-01) e outros parâmetros relacionados.",
+    items: [{ causa: "b5-15 (nível de espera do PID) e o método de parada configurados de forma incompatível.", solucao: "Ajuste b5-15 e o método de parada (b1-03) para uma combinação válida." }]
+  },
+  {
+    code: "oPE10", category: "oPE", name: "Erro de ajuste de dados V/f",
+    desc: "As frequências/tensões do padrão V/f (E1-04, E1-06, E1-07, E1-09) não seguem a ordem crescente exigida.",
+    items: [{ causa: "Sequência de valores V/f inconsistente.", solucao: "Corrija E1-04, E1-06, E1-07 e E1-09 (ou os equivalentes E3-xx do segundo motor) em ordem crescente." }]
+  },
+  {
+    code: "oPE11", category: "oPE", name: "Erro de ajuste da frequência portadora",
+    desc: "Os limites de frequência portadora (C6-02 a C6-05) estão configurados de forma contraditória.",
+    items: [{ causa: "Limite inferior maior que o limite superior da portadora.", solucao: "Corrija os parâmetros C6-02 a C6-05 para uma faixa coerente." }]
+  },
+  {
+    code: "oPE13", category: "oPE", name: "Erro de seleção do monitor de pulso",
+    desc: "A escala do monitor de saída em trem de pulso (H6-07) está zerada com uma seleção de monitor incompatível em H6-06.",
+    items: [{ causa: "H6-07 = 0 com H6-06 fora de 101, 102, 105 ou 116.", solucao: "Ajuste H6-06 para um dos valores compatíveis ou corrija a escala em H6-07." }]
+  },
+
+  // ============ ERROS DE AUTO-AJUSTE (seção 5.7) ============
+  {
+    code: "Er-01", category: "auto-ajuste", name: "Erro de dados do motor",
+    desc: "Os dados inseridos para o auto-ajuste não são compatíveis com a placa de identificação do motor.",
+    items: [
+      { causa: "Dados de placa inseridos incorretamente.", solucao: "Confira e reinsira os dados corretos da placa do motor (parâmetros T1) e repita o auto-ajuste." },
+      { causa: "Potência e corrente nominal do motor incompatíveis (T1-02/T1-04).", solucao: "Verifique a compatibilidade drive/motor e corrija T1-02 e T1-04." },
+    ]
+  },
+  {
+    code: "Er-02", category: "auto-ajuste", name: "Falha de advertência durante o auto-ajuste",
+    desc: "Ocorreu uma condição de alerta durante o processo de auto-ajuste.",
+    items: [
+      { causa: "Dados do motor incorretos ou carga muito pesada durante o auto-ajuste.", solucao: "Verifique a fiação, a carga mecânica e reinsira os dados corretos do motor antes de repetir o teste." },
+    ]
+  },
+  {
+    code: "Er-03", category: "auto-ajuste", name: "Entrada da tecla STOP",
+    desc: "O auto-ajuste foi interrompido manualmente pela tecla STOP.",
+    items: [{ causa: "Auto-ajuste cancelado antes de concluir.", solucao: "Execute o auto-ajuste novamente sem interrompê-lo." }]
+  },
+  {
+    code: "Er-04", category: "auto-ajuste", name: "Erro de resistência linha a linha",
+    desc: "O valor de resistência calculado ficou fora da faixa esperada durante o auto-ajuste.",
+    items: [
+      { causa: "Dados de placa incorretos ou fiação do motor com defeito.", solucao: "Corrija a fiação e reinsira os dados corretos da placa do motor." },
+      { causa: "Auto-ajuste não concluído no tempo previsto.", solucao: "Desconecte o motor da carga mecânica e repita o auto-ajuste rotacional." },
+    ]
+  },
+  {
+    code: "Er-05", category: "auto-ajuste", name: "Erro de corrente sem carga",
+    desc: "O valor de corrente sem carga calculado ficou fora da faixa esperada.",
+    items: [
+      { causa: "Dados de placa incorretos.", solucao: "Reinsira os dados corretos da placa do motor e repita o auto-ajuste." },
+      { causa: "Fiação do motor com defeito.", solucao: "Verifique e corrija a fiação do motor." },
+    ]
+  },
+  {
+    code: "Er-08", category: "auto-ajuste", name: "Erro do escorregamento nominal",
+    desc: "O valor de escorregamento nominal calculado ficou fora da faixa esperada.",
+    items: [
+      { causa: "Dados de placa incorretos ou fiação com defeito.", solucao: "Corrija os dados de placa e a fiação, e repita o auto-ajuste." },
+    ]
+  },
+  {
+    code: "Er-09", category: "auto-ajuste", name: "Erro de aceleração (auto-ajuste rotacional)",
+    desc: "O motor não atingiu a velocidade esperada dentro do tempo de aceleração configurado durante o auto-ajuste.",
+    items: [
+      { causa: "Tempo de aceleração (C1-01) curto demais para a inércia da carga.", solucao: "Aumente o tempo de aceleração ou desconecte a carga mecânica do motor durante o teste." },
+      { causa: "Limite de torque de aceleração (L7-01/L7-02) ajustado baixo.", solucao: "Aumente os limites de torque L7-01 e L7-02." },
+    ]
+  },
+  {
+    code: "Er-11", category: "auto-ajuste", name: "Falha de velocidade do motor (auto-ajuste)",
+    desc: "A referência de torque ficou alta demais durante o auto-ajuste em controle vetorial de malha aberta.",
+    items: [{ causa: "Carga acoplada dificultando o giro livre do motor.", solucao: "Aumente o tempo de aceleração ou desconecte a carga mecânica durante o teste." }]
+  },
+  {
+    code: "Er-12", category: "auto-ajuste", name: "Erro de detecção de corrente",
+    desc: "Falha detectada na leitura de corrente durante o auto-ajuste.",
+    items: [
+      { causa: "Fase do motor ausente (U/T1, V/T2 ou W/T3).", solucao: "Verifique e corrija a fiação trifásica do motor." },
+      { causa: "Curto-circuito entre fases do motor.", solucao: "Verifique o cabeamento em busca de curtos entre fases." },
+      { causa: "Motor não conectado ao drive durante o teste.", solucao: "Conecte o motor corretamente antes de executar o auto-ajuste." },
+    ]
+  },
+  {
+    code: "End1", category: "auto-ajuste", name: "Ajuste excessivo de V/f",
+    desc: "A referência de torque excedeu 20% durante o auto-ajuste rotacional, ou a corrente sem carga excedeu 80%.",
+    items: [{ causa: "Dados de placa do motor incorretos (T1-03 a T1-05).", solucao: "Confira e corrija os dados da placa do motor; se possível, desconecte a carga mecânica e repita o teste." }]
+  },
+  {
+    code: "End2", category: "auto-ajuste", name: "Coeficiente de saturação do núcleo de ferro",
+    desc: "Resultado fora da faixa esperada para o coeficiente de saturação do núcleo de ferro do motor, detectado no auto-ajuste rotacional.",
+    items: [{ causa: "Dados de placa do motor incorretos ou motor incompatível com o auto-ajuste rotacional.", solucao: "Confira os dados da placa do motor e repita o auto-ajuste; avalie se o motor é compatível com este tipo de teste." }]
+  },
+  {
+    code: "End3", category: "auto-ajuste", name: "Alarme de ajuste da corrente nominal",
+    desc: "O valor de corrente nominal calculado no auto-ajuste ficou fora do esperado.",
+    items: [{ causa: "Corrente nominal do motor (E2-01) mal ajustada ou dados de placa incorretos.", solucao: "Confira a corrente nominal na placa de identificação do motor e repita o auto-ajuste." }]
+  },
+];
+
+// Normaliza um código digitado pelo usuário para facilitar a busca
+function normalizeCode(str) {
+  return str
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/[–—]/g, "-")
+    .trim();
+}
+
+// Constrói um índice de busca: cada entrada pode responder por múltiplos códigos (ex.: "CPF20 / CPF21")
+const SEARCH_INDEX = [];
+FAULT_DB.forEach((entry) => {
+  let expanded = [];
+  const wholeRangeMatch = entry.code.match(/^([A-Za-z]+)(\d+)-\1(\d+)$/);
+  if (wholeRangeMatch) {
+    // Ex.: "oFA30-oFA43" -> expande oFA30, oFA31, ..., oFA43
+    const prefix = wholeRangeMatch[1];
+    const start = parseInt(wholeRangeMatch[2], 10);
+    const end = parseInt(wholeRangeMatch[3], 10);
+    for (let i = start; i <= end; i++) {
+      expanded.push(prefix + String(i).padStart(wholeRangeMatch[2].length, "0"));
+    }
+    expanded.push(entry.code);
+  } else {
+    expanded = entry.code.split(/\s*\/\s*|\s+até\s+/i).map((c) => c.trim());
+    expanded.push(entry.code);
+  }
+  expanded.forEach((c) => {
+    SEARCH_INDEX.push({ key: normalizeCode(c), entry });
+  });
+});
+
+const CATEGORY_LABELS = {
+  falha: { label: "Falha", color: "#ff5a5a" },
+  alarme: { label: "Alarme", color: "#ffb020" },
+  "oPE": { label: "Erro de Programação (oPE)", color: "#59c7ff" },
+  "auto-ajuste": { label: "Erro de Auto-ajuste", color: "#8fd694" },
+};
+
+</script>
+<script>
+  const input = document.getElementById("codeInput");
+  const results = document.getElementById("results");
+  const quickrow = document.getElementById("quickrow");
+
+  const QUICK_CODES = ["oC", "oH", "ov", "PF", "GF", "Uv1", "CE", "oL1", "SEr", "oPE02"];
+  QUICK_CODES.forEach((c) => {
+    const btn = document.createElement("button");
+    btn.textContent = c;
+    btn.addEventListener("click", () => {
+      input.value = c;
+      render(c);
+      input.focus();
+    });
+    quickrow.appendChild(btn);
+  });
+
+  function emptyState(){
+    return `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="9" stroke="#5f7278" stroke-width="1.4"/>
+        <path d="M12 8V13" stroke="#5f7278" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="12" cy="16" r="0.9" fill="#5f7278"/>
+      </svg>
+      <p>Digite o código exibido no display do inversor (ex.: oC, oH, ov, PF, GF, CE, Uv1, oPE02) e pressione Enter.</p>
+    </div>`;
+  }
+
+  function notFound(query){
+    return `<div class="card not-found">
+      <div class="big">${escapeHtml(query || "?")}</div>
+      <p>Não encontramos esse código na base consultada.<br>
+      Confira a grafia exatamente como aparece no display do operador digital, ou consulte o manual completo do V1000.</p>
+    </div>`;
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[m]));
+  }
+
+  function renderCard(entry, matchedCode){
+    const cat = CATEGORY_LABELS[entry.category] || { label: entry.category, color: "#999" };
+    const itemsHtml = entry.items.map((it, i) => `
+      <div class="cause-item">
+        <div class="cause-num">${String(i+1).padStart(2,"0")}</div>
+        <div class="cause-body">
+          <b>${escapeHtml(it.causa)}</b>
+          <div class="sol">${escapeHtml(it.solucao)}</div>
+        </div>
+      </div>
+    `).join("");
+
+    return `<div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-code">${escapeHtml(matchedCode)}</div>
+          <div class="card-name">${escapeHtml(entry.name)}</div>
+        </div>
+        <span class="badge" style="color:${cat.color};border-color:${cat.color}55;background:${cat.color}14;">${cat.label}</span>
+      </div>
+      <div class="card-desc">${escapeHtml(entry.desc)}</div>
+      <div class="section-label">Causas prováveis &amp; soluções</div>
+      ${itemsHtml}
+    </div>`;
+  }
+
+  function render(rawQuery){
+    const query = (rawQuery ?? input.value).trim();
+    if(!query){
+      results.innerHTML = emptyState();
+      return;
+    }
+    const norm = normalizeCode(query);
+    const hit = SEARCH_INDEX.find((row) => row.key === norm);
+    if(hit){
+      results.innerHTML = renderCard(hit.entry, query);
+      return;
+    }
+    // busca parcial (contém) como segunda tentativa
+    const partial = SEARCH_INDEX.filter((row) => row.key.includes(norm) || norm.includes(row.key));
+    if(partial.length){
+      const seen = new Set();
+      const cards = [];
+      partial.slice(0,5).forEach((row) => {
+        if(seen.has(row.entry.code)) return;
+        seen.add(row.entry.code);
+        cards.push(renderCard(row.entry, row.entry.code));
+      });
+      results.innerHTML = cards.join("");
+      return;
+    }
+    results.innerHTML = notFound(query);
+  }
+
+  input.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){ render(); }
+  });
+  input.addEventListener("input", () => {
+    if(input.value.trim() === ""){ results.innerHTML = emptyState(); }
+  });
+
+  // estado inicial
+  results.innerHTML = emptyState();
+  input.focus();
+</script>
+</body>
+</html>
